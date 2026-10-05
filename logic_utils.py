@@ -1,4 +1,6 @@
+import math
 import random
+import re
 
 
 def get_range_for_difficulty(difficulty: str):
@@ -12,25 +14,42 @@ def get_range_for_difficulty(difficulty: str):
     return 1, 100
 
 
-def parse_guess(raw: str):
+def parse_guess(raw: str, low: int = 1, high: int = 100):
     """
     Parse user input into an int guess.
 
     Returns: (ok: bool, guess_int: int | None, error_message: str | None)
     """
+    # FIX: Edge cases (negatives, decimals, huge numbers, stray spaces) used to
+    # be accepted or silently truncated. Asked Claude Code for three risky
+    # inputs and tightened this so bad input returns a clear error instead.
     if raw is None:
         return False, None, "Enter a guess."
 
-    if raw == "":
+    text = raw.strip()
+    if text == "":
         return False, None, "Enter a guess."
 
-    try:
-        if "." in raw:
-            value = int(float(raw))
-        else:
-            value = int(raw)
-    except Exception:
+    if not re.fullmatch(r"[+-]?\d+", text, re.ASCII):
+        try:
+            # float() quietly accepts things like "1_0", so rule those out first
+            if "_" in text:
+                raise ValueError(text)
+            number = float(text)
+        except ValueError:
+            return False, None, "That is not a number."
+        if math.isfinite(number):
+            return False, None, "Enter a whole number (no decimals)."
         return False, None, "That is not a number."
+
+    try:
+        value = int(text)
+    except ValueError:
+        # Absurdly long digit strings (over Python's int conversion limit)
+        return False, None, f"Enter a number between {low} and {high}."
+
+    if value < low or value > high:
+        return False, None, f"Enter a number between {low} and {high}."
 
     return True, value, None
 
