@@ -18,16 +18,25 @@ HIGH_SCORE_FILE = Path(__file__).parent / "high_score.json"
 
 
 def render_summary(show_hint):
-    """Show a table of this game's guesses (UI only, no game logic)."""
+    """Show a table of this game's guesses (UI only, no game logic).
+
+    Args:
+        show_hint: When False the Result and Temperature columns are left out
+            so the table doesn't give away the hints the player turned off.
+    """
     if not st.session_state.rounds:
         return
     st.subheader("Session summary")
     rows = []
-    for r in st.session_state.rounds:
-        row = {"Attempt": r["attempt"], "Guess": r["guess"], "Score": r["score"]}
+    for entry in st.session_state.rounds:
+        row = {
+            "Attempt": entry["attempt"],
+            "Guess": entry["guess"],
+            "Score": entry["score"],
+        }
         if show_hint:
-            row["Result"] = r["outcome"]
-            row["Temperature"] = f'{r["emoji"]} {r["label"]}'
+            row["Result"] = entry["outcome"]
+            row["Temperature"] = f'{entry["emoji"]} {entry["label"]}'
         rows.append(row)
     st.table(rows)
 

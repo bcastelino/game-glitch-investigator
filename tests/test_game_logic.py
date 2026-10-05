@@ -107,7 +107,9 @@ def test_non_numbers_are_rejected(raw):
     assert err == "That is not a number."
 
 
-@pytest.mark.parametrize("raw, expected", [("1", 1), ("100", 100), (" 42 ", 42), ("+7", 7)])
+@pytest.mark.parametrize(
+    "raw, expected", [("1", 1), ("100", 100), (" 42 ", 42), ("+7", 7)]
+)
 def test_valid_guesses_still_parse(raw, expected):
     ok, value, err = parse_guess(raw, 1, 100)
     assert ok is True
