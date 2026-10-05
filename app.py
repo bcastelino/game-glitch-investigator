@@ -89,10 +89,18 @@ if "rounds" not in st.session_state:
 
 st.subheader("Make a guess")
 
-st.info(
-    f"Guess a number between {low} and {high}. "
-    f"Attempts left: {attempt_limit - st.session_state.attempts}"
-)
+banner_slot = st.empty()
+
+
+def show_banner():
+    """Draw the attempts-left banner (called again after a guess is scored)."""
+    banner_slot.info(
+        f"Guess a number between {low} and {high}. "
+        f"Attempts left: {attempt_limit - st.session_state.attempts}"
+    )
+
+
+show_banner()
 
 with st.expander("Developer Debug Info"):
     st.write("Secret:", st.session_state.secret)
@@ -197,6 +205,8 @@ if submit:
                     f"Score: {st.session_state.score}"
                 )
 
+# The banner above was drawn before this guess was scored, so refresh it
+show_banner()
 render_summary(show_hint)
 
 st.divider()
