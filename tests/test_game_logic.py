@@ -2,6 +2,7 @@ import pytest
 
 from logic_utils import (
     check_guess,
+    get_temperature,
     load_high_score,
     new_game_state,
     parse_guess,
@@ -53,6 +54,7 @@ def test_new_game_state_resets_everything():
     assert state["score"] == 0
     assert state["history"] == []
     assert state["attempts"] == 0
+    assert state["rounds"] == []
 
 
 def test_new_game_secret_stays_in_difficulty_range():
@@ -149,3 +151,21 @@ def test_save_high_score_keeps_the_best(tmp_path):
     assert load_high_score(path) == 50
     assert save_high_score(80, path) == 80   # higher score replaces it
     assert load_high_score(path) == 80
+
+
+# ---- Challenge 4: hot/cold helper ----
+
+@pytest.mark.parametrize("guess, label", [
+    (50, "Hot"),    # exact
+    (54, "Hot"),    # 4% away
+    (60, "Warm"),   # 10% away
+    (69, "Warm"),   # 19 of a 99-wide span, just under the 20% edge
+    (90, "Cold"),   # 40% away
+    (1, "Cold"),
+])
+def test_temperature_bands(guess, label):
+    assert get_temperature(guess, 50, 1, 100)[0] == label
+
+
+def test_temperature_handles_tiny_range():
+    assert get_temperature(5, 5, 5, 5)[0] == "Hot"

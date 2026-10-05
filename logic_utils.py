@@ -100,6 +100,7 @@ def new_game_state(low: int, high: int):
         "score": 0,
         "status": "playing",
         "history": [],
+        "rounds": [],
     }
 
 
@@ -124,3 +125,14 @@ def save_high_score(score: int, path):
     except OSError:
         return best
     return score
+
+
+def get_temperature(guess: int, secret: int, low: int, high: int):
+    """Return a (label, emoji) hot/cold pair for how close guess is to secret."""
+    span = max(high - low, 1)
+    distance = abs(guess - secret) / span
+    if distance <= 0.05:
+        return "Hot", "🔥"
+    if distance <= 0.20:
+        return "Warm", "🌤️"
+    return "Cold", "❄️"

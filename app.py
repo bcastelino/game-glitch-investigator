@@ -6,6 +6,7 @@ import streamlit as st
 from logic_utils import (
     check_guess,
     get_range_for_difficulty,
+    get_temperature,
     load_high_score,
     new_game_state,
     parse_guess,
@@ -14,6 +15,22 @@ from logic_utils import (
 )
 
 HIGH_SCORE_FILE = Path(__file__).parent / "high_score.json"
+
+
+def render_summary(show_hint):
+    """Show a table of this game's guesses (UI only, no game logic)."""
+    if not st.session_state.rounds:
+        return
+    st.subheader("Session summary")
+    rows = []
+    for r in st.session_state.rounds:
+        row = {"Attempt": r["attempt"], "Guess": r["guess"], "Score": r["score"]}
+        if show_hint:
+            row["Result"] = r["outcome"]
+            row["Temperature"] = f'{r["emoji"]} {r["label"]}'
+        rows.append(row)
+    st.table(rows)
+
 
 st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
 
@@ -67,6 +84,9 @@ if "status" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
+if "rounds" not in st.session_state:
+    st.session_state.rounds = []
+
 st.subheader("Make a guess")
 
 st.info(
@@ -108,6 +128,7 @@ if st.session_state.status != "playing":
         st.success("You already won. Start a new game to play again.")
     else:
         st.error("Game over. Start a new game to try again.")
+    render_summary(show_hint)
     st.stop()
 
 if submit:
@@ -126,13 +147,34 @@ if submit:
         # explain the odd hints, then confirmed in the live game.
         outcome, message = check_guess(guess_int, st.session_state.secret)
 
+        # Challenge 4: colour-coded hint plus a hot/cold emoji
+        label, emoji = get_temperature(
+            guess_int, st.session_state.secret, low, high
+        )
         if show_hint:
-            st.warning(message)
+            hint_text = f"{message}  {emoji} {label}"
+            if outcome == "Too High":
+                st.error(hint_text)
+            elif outcome == "Too Low":
+                st.info(hint_text)
+            else:
+                st.success(hint_text)
 
         st.session_state.score = update_score(
             current_score=st.session_state.score,
             outcome=outcome,
             attempt_number=st.session_state.attempts,
+        )
+
+        st.session_state.rounds.append(
+            {
+                "attempt": st.session_state.attempts,
+                "guess": guess_int,
+                "outcome": outcome,
+                "label": label,
+                "emoji": emoji,
+                "score": st.session_state.score,
+            }
         )
 
         if outcome == "Win":
@@ -154,6 +196,8 @@ if submit:
                     f"The secret was {st.session_state.secret}. "
                     f"Score: {st.session_state.score}"
                 )
+
+render_summary(show_hint)
 
 st.divider()
 st.caption("Built by an AI that claims this code is production-ready.")
