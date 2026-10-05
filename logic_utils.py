@@ -1,3 +1,4 @@
+import json
 import math
 import random
 import re
@@ -79,12 +80,10 @@ def update_score(current_score: int, outcome: str, attempt_number: int):
             points = 10
         return current_score + points
 
-    if outcome == "Too High":
-        if attempt_number % 2 == 0:
-            return current_score + 5
-        return current_score - 5
-
-    if outcome == "Too Low":
+    # FIX: Too High used to give +5 on even attempts, so wrong guesses could
+    # raise the score. Every wrong guess now costs 5 points. Needed this before
+    # a High Score tracker made sense (planned with Claude Code agent mode).
+    if outcome in ("Too High", "Too Low"):
         return current_score - 5
 
     return current_score
@@ -102,3 +101,26 @@ def new_game_state(low: int, high: int):
         "status": "playing",
         "history": [],
     }
+
+
+def load_high_score(path):
+    """Return the saved best score, or 0 if the file is missing or unreadable."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            best = json.load(f)["best"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return 0
+    return best if isinstance(best, int) else 0
+
+
+def save_high_score(score: int, path):
+    """Save score if it beats the stored best and return the best score."""
+    best = load_high_score(path)
+    if score <= best:
+        return best
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"best": score}, f)
+    except OSError:
+        return best
+    return score

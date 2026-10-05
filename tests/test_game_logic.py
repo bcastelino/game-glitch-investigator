@@ -1,6 +1,13 @@
 import pytest
 
-from logic_utils import check_guess, new_game_state, parse_guess
+from logic_utils import (
+    check_guess,
+    load_high_score,
+    new_game_state,
+    parse_guess,
+    save_high_score,
+    update_score,
+)
 
 
 def test_winning_guess():
@@ -110,3 +117,35 @@ def test_range_follows_difficulty():
     # 60 is fine on Normal (1-100) but out of range on Hard (1-50)
     assert parse_guess("60", 1, 100)[0] is True
     assert parse_guess("60", 1, 50)[0] is False
+
+
+# ---- Challenge 2: scoring and the High Score file ----
+
+@pytest.mark.parametrize("outcome", ["Too High", "Too Low"])
+@pytest.mark.parametrize("attempt", [1, 2, 3, 4])
+def test_wrong_guesses_always_cost_points(outcome, attempt):
+    # Too High on an even attempt used to ADD 5 points
+    assert update_score(0, outcome, attempt) == -5
+
+
+def test_win_adds_points():
+    assert update_score(0, "Win", 1) == 80
+
+
+def test_load_high_score_missing_file(tmp_path):
+    assert load_high_score(tmp_path / "nope.json") == 0
+
+
+def test_load_high_score_corrupt_file(tmp_path):
+    bad = tmp_path / "high_score.json"
+    bad.write_text("{not json", encoding="utf-8")
+    assert load_high_score(bad) == 0
+
+
+def test_save_high_score_keeps_the_best(tmp_path):
+    path = tmp_path / "high_score.json"
+    assert save_high_score(50, path) == 50
+    assert save_high_score(30, path) == 50   # lower score doesn't overwrite
+    assert load_high_score(path) == 50
+    assert save_high_score(80, path) == 80   # higher score replaces it
+    assert load_high_score(path) == 80

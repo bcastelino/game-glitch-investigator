@@ -1,13 +1,19 @@
 import random
+from pathlib import Path
+
 import streamlit as st
 
 from logic_utils import (
     check_guess,
     get_range_for_difficulty,
+    load_high_score,
     new_game_state,
     parse_guess,
+    save_high_score,
     update_score,
 )
+
+HIGH_SCORE_FILE = Path(__file__).parent / "high_score.json"
 
 st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
 
@@ -33,6 +39,11 @@ low, high = get_range_for_difficulty(difficulty)
 
 st.sidebar.caption(f"Range: {low} to {high}")
 st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
+
+# Challenge 2: High Score tracker saved to high_score.json
+previous_best = load_high_score(HIGH_SCORE_FILE)
+best_score_slot = st.sidebar.empty()
+best_score_slot.metric("🏆 Best score", previous_best)
 
 # Guesses are now validated against the current range, so switching difficulty
 # has to start a fresh game or an old secret could end up outside the range.
@@ -131,6 +142,10 @@ if submit:
                 f"You won! The secret was {st.session_state.secret}. "
                 f"Final score: {st.session_state.score}"
             )
+            new_best = save_high_score(st.session_state.score, HIGH_SCORE_FILE)
+            best_score_slot.metric("🏆 Best score", new_best)
+            if st.session_state.score > previous_best:
+                st.success("🏆 New high score!")
         else:
             if st.session_state.attempts >= attempt_limit:
                 st.session_state.status = "lost"
