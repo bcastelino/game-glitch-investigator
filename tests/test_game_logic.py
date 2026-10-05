@@ -84,7 +84,13 @@ def test_decimals_are_rejected_not_truncated(raw):
     assert "whole number" in err
 
 
-@pytest.mark.parametrize("raw", ["99999999999999999999", "9" * 5000])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        pytest.param("99999999999999999999", id="20-digit-number"),
+        pytest.param("9" * 5000, id="5000-digit-number"),
+    ],
+)
 def test_extremely_large_values_are_rejected(raw):
     # Edge case 3: huge numbers must give an error, not crash or pass
     ok, value, err = parse_guess(raw, 1, 100)
