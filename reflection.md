@@ -25,6 +25,41 @@ Answer each question in 3 to 5 sentences. Be specific and honest about what actu
 | Win with guess **21** (secret 21), then click **New Game** | A fresh game that accepts guesses | "You already won. Start a new game to play again." Score stays 25 and history is kept | none | New Game block, app.py:134-138, with `st.stop()` at app.py:140-145 |
 | Difficulty **Hard** (1-50), click **New Game** 8 times | Every secret between 1 and 50 | Secrets: 85, 37, 25, 36, 7, 28, 5, 20, and the banner still says "1 and 100" | none | `random.randint(1, 100)` at app.py:136, banner at app.py:110, ranges at app.py:5-10 |
 
+*(Line numbers in this section point to the original starter `app.py`, before any fixes.)*
+
+**Play-session trace (starter code, Normal difficulty, secret 21 shown in "Developer Debug Info")**
+
+This is what I saw while playing the unfixed game in the browser. The browser console showed no errors or warnings the whole time.
+
+```
+[load]    Normal, "Range: 1 to 100", "Attempts allowed: 8"
+          Banner: "Attempts left: 7"                      <- expected 8 (bug 3)
+[submit]  (empty box)  -> "Enter a guess."
+          next rerun: Attempts 2, History [""]            <- empty input used an attempt (bug 3)
+[submit]  80  (secret 21, attempt 3) -> "Go HIGHER!"      <- guess is too HIGH (bug 1)
+[submit]  5   (secret 21, attempt 4) -> "Go HIGHER!"
+          Score went -5 -> 0                              <- wrong guess GAINED points: text compare "5" > "21" counted it as Too High (bug 2)
+[submit]  9   (secret 21, attempt 5) -> "Go LOWER!"       <- guess is too LOW (bug 1)
+[submit]  21  (attempt 6) -> "Correct!", "You won! The secret was 21. Final score: 25"
+[click]   New Game -> "You already won. Start a new game to play again."
+          Attempts 0, Score 25, History ["", 80, 5, 9, 21] kept   <- not reset (bug 4)
+[switch]  Difficulty = Hard, sidebar "Range: 1 to 50", banner "Guess a number between 1 and 100"
+[click]   New Game x8 -> secrets 85, 37, 25, 36, 7, 28, 5, 20   <- 85 is outside 1-50 (bug 5)
+[console] 0 errors, 0 warnings
+```
+
+**Fix status** (what I changed and why it works)
+
+| # | Bug | Status | What changed and why it works |
+|---|-----|--------|-------------------------------|
+| 1 | Hints backwards | Fixed | In `check_guess` (now in `logic_utils.py`) a guess above the secret returns "Too High" with "Go LOWER!", and one below returns "Too Low" with "Go HIGHER!". The messages now match the labels, and regression tests check the text. |
+| 2 | Even-attempt string compare and +5 score | Fixed | Removed the `str(secret)` cast in `app.py` and the string fallback, so both sides are always ints. `update_score` now takes 5 points off every wrong guess. |
+| 3 | Attempts off by one, bad input costs an attempt | Fixed | `attempts` now starts at 0, and it only goes up after `parse_guess` accepts the guess. A fresh Normal game shows "Attempts left: 8". |
+| 4 | New Game doesn't restart | Fixed | `new_game_state()` returns a complete fresh state (attempts, secret, score, status, history, rounds) and the New Game button copies all of it into `st.session_state`, so `st.stop()` no longer blocks play. |
+| 5 | New Game ignores the range, hard-coded banner | Fixed (except Hard vs Normal) | The secret is drawn with `randint(low, high)` for the current difficulty, the banner shows `low` and `high`, and changing difficulty starts a fresh game. I did **not** change the ranges themselves, so Hard (1-50) is still easier than Normal (1-100). |
+
+I re-ran the same inputs after the fixes (details in section 3) and found no regressions: pytest passes and the game played normally.
+
 ---
 
 ## 2. How did you use AI as a teammate?
