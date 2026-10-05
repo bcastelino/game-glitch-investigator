@@ -1,3 +1,6 @@
+import random
+
+
 def get_range_for_difficulty(difficulty: str):
     """Return (low, high) inclusive range for a given difficulty."""
     if difficulty == "Easy":
@@ -66,3 +69,17 @@ def update_score(current_score: int, outcome: str, attempt_number: int):
         return current_score - 5
 
     return current_score
+
+
+def new_game_state(low: int, high: int):
+    """Return a fresh game state dict with the secret drawn from [low, high]."""
+    # FIX: New Game used to only reset attempts and draw from 1-100, so a won
+    # game stayed stuck and Easy/Hard secrets could be out of range. Built this
+    # helper with Claude Code so the whole reset lives in one testable place.
+    return {
+        "attempts": 0,
+        "secret": random.randint(low, high),
+        "score": 0,
+        "status": "playing",
+        "history": [],
+    }

@@ -4,6 +4,7 @@ import streamlit as st
 from logic_utils import (
     check_guess,
     get_range_for_difficulty,
+    new_game_state,
     parse_guess,
     update_score,
 )
@@ -75,10 +76,12 @@ with col2:
 with col3:
     show_hint = st.checkbox("Show hint", value=True)
 
-# FIXME: Logic breaks here - New Game doesn't reset status/score/history and ignores the difficulty range
+# FIX: New Game now resets attempts, score, status and history, and draws the
+# secret from the current difficulty range (was a hard-coded 1-100). Used
+# Claude Code to move the reset into logic_utils.new_game_state.
 if new_game:
-    st.session_state.attempts = 0
-    st.session_state.secret = random.randint(1, 100)
+    for key, value in new_game_state(low, high).items():
+        st.session_state[key] = value
     st.success("New game started.")
     st.rerun()
 
