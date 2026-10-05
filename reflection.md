@@ -35,26 +35,30 @@ Answer each question in 3 to 5 sentences. Be specific and honest about what actu
 
 **A suggestion I didn't accept as written.** Claude's first read of the code came back with a long list of suspects, like decimals getting cut off in `parse_guess`, the score not resetting, and the tests not matching what `check_guess` returns. I didn't paste that whole list into my bug log. Some of it was just a guess from reading the code, and I hadn't seen any of it happen in the game. I only kept the bugs I could reproduce myself, and I checked each one against the debug panel (secret, attempts, score). So the log has five bugs I actually saw break, and the rest of the list can wait until I'm fixing things.
 
+**Phase 2 update (fixing the bugs).** For the repair I picked the backwards hints and the New Game bug, and used Claude Code to refactor the logic into `logic_utils.py` and make the edits. One suggestion I did *not* take as written was about the starter tests. They compare `check_guess(...)` to a bare string like `"Too High"`, and Claude gave me two ways to make them pass: return only the outcome string, or leave the function alone and change the tests to unpack the `(outcome, message)` tuple. Returning only the outcome would have made the old tests pass, but it would have broken the function's documented contract and forced the hint text to move into `app.py`. I picked the second option and checked it by running pytest (green) and replaying the hints in the live game. A suggestion that was correct and I kept: when I made `parse_guess` check the difficulty range, Claude pointed out that switching difficulty mid-game could leave a secret outside the new range (a Normal secret of 85 would be unwinnable on Hard), so the game should start fresh when the difficulty changes. I added that and tested it by switching to Hard in the browser.
+
 ---
 
 ## 3. Debugging and testing your fixes
 
-- How did you decide whether a bug was really fixed?
-- Describe at least one test you ran (manual or using pytest)  
-  and what it showed you about your code.
-- Did AI help you design or understand any tests? How?
+**How I decided a bug was really fixed.** For me a bug counts as fixed only if I can't make it happen anymore in the live game *and* a pytest case fails without the fix. I took the exact inputs from my bug table and ran them again in the browser. With secret 61, guessing 1 now shows "Go HIGHER!" (it used to tell me the opposite), and guessing 58 shows "Go HIGHER! 🔥 Hot". After winning I clicked New Game and the game really restarted: attempts 0, score 0, empty history, and the old summary table was gone. I also clicked New Game 10 times on Hard and every secret was between 1 and 50 (the old code gave me 85 once).
+
+**A test I ran and what it showed me.** My favourite is `test_numeric_not_text_comparison`, which checks that guessing 9 against a secret of 21 is "Too Low". It is simple, but it is the exact case where the old code compared `"9" > "21"` as text and got the wrong answer. When I wrote the edge-case tests, one of them failed and showed me something I hadn't thought about: Python's `float("1_0")` quietly works, so my parser called "1_0" a decimal instead of "not a number". Another failure was my own mistake: I wrote a Hot/Warm boundary test as if the range was 100 wide, but 1 to 100 is a span of 99, so the code was right and my test was wrong. I fixed the test, not the code. All 52 tests pass now and `flake8` reports nothing (the full output is in the README and `ai_interactions.md`).
+
+**Did AI help with tests?** Yes. I asked Claude Code what edge-case inputs could still break the game and it suggested negative/out-of-range numbers, decimals and extremely large values. I asked it to turn those into parametrized pytest cases, then I ran the whole suite and replayed the same inputs in the live game instead of just trusting that they passed. It also explained why the starter tests were failing: they compared the result of `check_guess` to a plain string, but the function returns an `(outcome, message)` tuple. Still not fixed on purpose (to keep this small): Hard (1-50) is easier than Normal (1-100), and the win formula still has a `+1` in it.
 
 ---
 
 ## 4. What did you learn about Streamlit and state?
 
-- How would you explain Streamlit "reruns" and session state to a friend who has never used Streamlit?
+**Explaining it to a friend.** Streamlit re-runs your whole Python file from top to bottom every time you click a button or type something. That means normal variables get thrown away on every click, so anything you need to remember, like the secret number, the score and the attempts, has to live in `st.session_state`, which survives between reruns. I hit a good example of this myself: the "Attempts left" banner was always one guess behind. The banner was drawn near the top of the file, *before* the code lower down that handles the Submit click had updated the counter. I fixed it by drawing the banner into an `st.empty()` placeholder and redrawing it after the guess was scored. Streamlit's rerun model also means the order of lines in the file is the order things show up on the page.
 
 ---
 
 ## 5. Looking ahead: your developer habits
 
-- What is one habit or strategy from this project that you want to reuse in future labs or projects?
-  - This could be a testing habit, a prompting strategy, or a way you used Git.
-- What is one thing you would do differently next time you work with AI on a coding task?
-- In one or two sentences, describe how this project changed the way you think about AI generated code.
+**A habit I want to keep.** I'll reproduce a bug myself before I let AI explain it, and I'll commit after every finished step. I made a separate commit for each fix, each challenge and the docs, so my history reads like a story and I could undo one piece without losing the rest. Marking the problem with a `# FIXME` comment first also helped me because I could point the AI at an exact spot instead of saying "the hints are wrong somewhere".
+
+**What I'd do differently next time.** I'd be more specific in my prompts and ask for smaller changes. Some of the AI's work grew past what I asked for, like adding things the challenges needed, so I'd say up front "only touch this function" and then read the whole diff line by line. I'd also run the linter much earlier instead of at the end, because it would have been easier to keep the code tidy as I went.
+
+**How my view of AI-generated code changed.** The starter code said it was "production-ready" and still had hints that lie, a secret that changed type, and a New Game button that didn't restart anything. It reads cleanly, so it's easy to trust, but it can still be wrong. Now I treat AI code like a first draft from a teammate: useful and fast, but I check it with tests and by actually playing the game.
